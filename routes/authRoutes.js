@@ -2,65 +2,101 @@ const express = require("express");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const userModel = require("../models/user");
-const CodeModel = require("../models/code");
+const codeModel = require("../models/code");
 
 const router = express.Router();
 
 // Register endpoint
 router.post("/register", (req, res) => {
-  const { username, email, password } = req.body;
-  const role = "user";
-  userModel.createUser(username, email, password, role, (err, result) => {
-    if (err) {
-      return res.status(500).json({ message: "Registration failed" });
+  const { firstName, lastName, password, contactInfo, role } = req.body;
+  console.log(req.body);
+  userModel.createUser(
+    firstName,
+    lastName,
+    contactInfo,
+    password,
+    role,
+    (err, result) => {
+      if (err) {
+        return res.status(500).json({ message: err.message });
+      }
+      res.status(200).json({ message: "User registered successfully" });
     }
-    res.status(200).json({ message: "User registered successfully" });
-  });
+  );
 });
 
 // AdminRegister endpoint
-router.post("/register_admin", async (req, res) => {
-  const { username, email, password } = req.body.values;
-  const role = req.body.role;
-  const invitationCode = req.body.invitationcode;
+// router.post("/register_admin", async (req, res) => {
+//   const { username, email, password } = req.body.values;
+//   const role = req.body.role;
+//   const invitationCode = req.body.invitationcode;
 
-  try {
-    // Check the invitation code
-    const codeEntry = await CodeModel.checkInvitationCode(invitationCode);
-    console.log(codeEntry);
-    // If the code is not found, return an error
-    if (!codeEntry) {
-      return res.status(400).json({ message: "Invalid invitation code" });
-    }
+//   try {
+//     // Check if the invitation code exists and is active (status is 1)
+//     codeModel.getCodeByCode(invitationCode, (err, codeEntry) => {
+//       if (err) {
+//         s;
+//         return res.status(500).json({
+//           message: "An error occurred while fetching the invitation code.",
+//         });
+//       }
 
-    // If the code is inactive (status is false), return an error
-    if (!codeEntry.status) {
-      return res.status(400).json({ message: "Invitation code is inactive" });
-    }
+//       // Check if the code exists and is active
+//       if (!codeEntry || codeEntry.status !== 1) {
+//         return res
+//           .status(400)
+//           .json({ message: "Invalid or inactive invitation code." });
+//       }
 
-    // Create the user if the invitation code is valid and active
-    userModel.createUser(username, email, password, role, (err, result) => {
-      if (err) {
-        return res.status(500).json({ message: "Registration failed" });
-      }
-      res.status(200).json({ message: "User registered successfully" });
+//       // Proceed with user registration
+//       userModel.createUser(username, email, password, role, (err, result) => {
+//         if (err) {
+//           return res.status(500).json({ message: err.message });
+//         }
 
-      // Optionally, update the invitation code status after successful registration
-      codeEntry.status = 0; // Set status to inactive after use
-    });
-  } catch (error) {
-    res.status(500).json({ message: "An error occurred", error });
-  }
-});
+//         // Update the invitation code to inactive after successful registration
+//         codeModel.updateCode(
+//           codeEntry.id,
+//           codeEntry.code,
+//           0,
+//           (err, updateResult) => {
+//             if (err) {
+//               return res
+//                 .status(500)
+//                 .json({ message: "Failed to update invitation code status." });
+//             }
+
+//             res.status(200).json({
+//               message:
+//                 "User registered successfully, invitation code marked as inactive.",
+//             });
+//           }
+//         );
+//       });
+//     });
+//   } catch (error) {
+//     res.status(500).json({ message: "An error occurred.", error });
+//   }
+// });
 
 // Login endpoint
 router.post("/login", (req, res) => {
-  const { email, password } = req.body;
-  userModel.getUserByEmail(email, (err, result) => {
-    if (err || result.length === 0) {
+  const { contactInfo, password } = req.body;
+  userModel.getUserByContactInfo(contactInfo, (err, user) => {
+    if (err) {
+      return res
+        .status(500)
+        .json({ message: "An error occurred.", error: err });
+    }
+    if (!user) {
       return res.status(400).json({ message: "User not found" });
     }
-    const user = result[0];
+
+    // Ensure user object contains password before comparing
+    if (!user.password) {
+      return res.status(500).json({ message: "User data is incomplete." });
+    }
+
     const isMatch = bcrypt.compareSync(password, user.password);
 
     if (!isMatch) {
@@ -73,11 +109,14 @@ router.post("/login", (req, res) => {
       expiresIn: "1h",
     });
 
-    if (rol_manage == "admin") {
+    if (rol_manage === "admin") {
       res.status(200).json({ token, role: "admin" });
-    }
-    if (rol_manage == "user") {
+    } else if (rol_manage === "superadmin") {
+      res.status(200).json({ token, role: "superadmin" });
+    } else if (rol_manage === "user") {
       res.status(200).json({ token, role: "user" });
+    } else {
+      res.status(500).json({ message: "Unknown role" });
     }
   });
 });
