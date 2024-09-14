@@ -18,35 +18,46 @@ const validatePassword = (password) => {
 // User Model
 const User = {
   // Method to create a new user
-  createUser: (firstName, lastName, contactInfo, password, role, callback) => {
+  createUser: (
+    firstName,
+    lastName,
+    email,
+    phoneNumber,
+    password,
+    role,
+    callback
+  ) => {
     // Validate the password
     const passwordValidationError = validatePassword(password);
     if (passwordValidationError) {
       return callback({ message: passwordValidationError }, null);
     }
 
-    // Check if the username or email already exists
-    const checkQuery = "SELECT * FROM users WHERE contactInfo = ?";
-    db.query(checkQuery, [contactInfo], (err, result) => {
+    // Check if the email or phoneNumber already exists
+    const checkQuery = "SELECT * FROM users WHERE email = ? OR phoneNumber = ?";
+    db.query(checkQuery, [email, phoneNumber], (err, result) => {
       if (err) {
-        console.error("Error checking contactInfo:", err);
+        console.error("Error checking email or phoneNumber:", err);
         return callback(err, null);
       }
 
-      // If a user is found with the same username or email, return an error
+      // If a user is found with the same email or phoneNumber, return an error
       if (result.length > 0) {
-        if (result[0].contactInfo === contactInfo) {
-          return callback({ message: "contactInfo already exists" }, null);
+        if (result[0].email === email) {
+          return callback({ message: "Email already exists" }, null);
+        }
+        if (result[0].phoneNumber === phoneNumber) {
+          return callback({ message: "Phone number already exists" }, null);
         }
       }
 
       // If no duplicate found, hash the password and create the user
       const hashedPassword = bcrypt.hashSync(password, 10);
       const query =
-        "INSERT INTO users (firstname, lastname, password, contactInfo, role) VALUES (?, ?, ?, ?, ?)";
+        "INSERT INTO users (firstname, lastname, password, email, phoneNumber, role) VALUES (?, ?, ?, ?, ?, ?)";
       db.query(
         query,
-        [firstName, lastName, hashedPassword, contactInfo, role],
+        [firstName, lastName, hashedPassword, email, phoneNumber, role],
         (err, result) => {
           if (err) {
             console.error("Error creating user:", err);
@@ -56,7 +67,8 @@ const User = {
             id: result.insertId,
             firstName,
             lastName,
-            contactInfo,
+            email,
+            phoneNumber,
             role,
           });
         }
@@ -64,10 +76,10 @@ const User = {
     });
   },
 
-  // Method to get a user by email
+  // Method to get a user by email or phone number
   getUserByContactInfo: (contactInfo, callback) => {
-    const query = "SELECT * FROM users WHERE contactInfo = ?";
-    db.query(query, [contactInfo], (err, result) => {
+    const query = "SELECT * FROM users WHERE email = ? OR phoneNumber = ?";
+    db.query(query, [contactInfo, contactInfo], (err, result) => {
       if (err) {
         console.error("Error fetching user by contactInfo:", err);
         return callback(err, null);
@@ -77,7 +89,58 @@ const User = {
       }
       return callback(null, result[0]);
     });
-  }
+  },
+
+  // Method to get all users excluding their passwords
+  getAllUsers: (callback) => {
+    const query =
+      "SELECT id, firstname, lastname, email, phoneNumber, role FROM users";
+    db.query(query, (err, results) => {
+      if (err) {
+        console.error("Error fetching all users:", err);
+        return callback(err, null);
+      }
+      return callback(null, results);
+    });
+  },
+
+  changePassword: (userId, oldPassword, newPassword, callback) => {
+    // Validate the new password
+    const passwordValidationError = validatePassword(newPassword);
+    if (passwordValidationError) {
+      return callback({ message: passwordValidationError }, null);
+    }
+
+    // Get the user's current password from the database
+    const getUserQuery = "SELECT password FROM users WHERE id = ?";
+    db.query(getUserQuery, [userId], (err, result) => {
+      if (err) {
+        console.error("Error fetching user:", err);
+        return callback(err, null);
+      }
+      if (result.length === 0) {
+        return callback({ message: "User not found" }, null);
+      }
+
+      const user = result[0];
+      // Check if the old password is correct
+      const isMatch = bcrypt.compareSync(oldPassword, user.password);
+      if (!isMatch) {
+        return callback({ message: "Old password is incorrect" }, null);
+      }
+
+      // Hash the new password and update it in the database
+      const hashedNewPassword = bcrypt.hashSync(newPassword, 10);
+      const updateQuery = "UPDATE users SET password = ? WHERE id = ?";
+      db.query(updateQuery, [hashedNewPassword, userId], (err, result) => {
+        if (err) {
+          console.error("Error updating password:", err);
+          return callback(err, null);
+        }
+        return callback(null, { message: "Password changed successfully" });
+      });
+    });
+  },
 };
 
 module.exports = User;

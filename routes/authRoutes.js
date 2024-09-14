@@ -6,14 +6,31 @@ const codeModel = require("../models/code");
 
 const router = express.Router();
 
+const verifyAdmin = (req, res, next) => {
+  // Replace with your actual admin verification logic
+  if ((req.user && req.user.role === "admin") || "superadmin") {
+    next();
+  } else {
+    res.status(403).json({ message: "Access denied" });
+  }
+};
+
 // Register endpoint
 router.post("/register", (req, res) => {
-  const { firstName, lastName, password, contactInfo, role } = req.body;
-  console.log(req.body);
+  const { firstName, lastName, password, email, phoneNumber, role } = req.body;
+
+  // Validate that either email or phoneNumber is provided
+  if (!email && !phoneNumber) {
+    return res
+      .status(400)
+      .json({ message: "Either email or phone number is required" });
+  }
+
   userModel.createUser(
     firstName,
     lastName,
-    contactInfo,
+    email,
+    phoneNumber,
     password,
     role,
     (err, result) => {
@@ -25,64 +42,18 @@ router.post("/register", (req, res) => {
   );
 });
 
-// AdminRegister endpoint
-// router.post("/register_admin", async (req, res) => {
-//   const { username, email, password } = req.body.values;
-//   const role = req.body.role;
-//   const invitationCode = req.body.invitationcode;
-
-//   try {
-//     // Check if the invitation code exists and is active (status is 1)
-//     codeModel.getCodeByCode(invitationCode, (err, codeEntry) => {
-//       if (err) {
-//         s;
-//         return res.status(500).json({
-//           message: "An error occurred while fetching the invitation code.",
-//         });
-//       }
-
-//       // Check if the code exists and is active
-//       if (!codeEntry || codeEntry.status !== 1) {
-//         return res
-//           .status(400)
-//           .json({ message: "Invalid or inactive invitation code." });
-//       }
-
-//       // Proceed with user registration
-//       userModel.createUser(username, email, password, role, (err, result) => {
-//         if (err) {
-//           return res.status(500).json({ message: err.message });
-//         }
-
-//         // Update the invitation code to inactive after successful registration
-//         codeModel.updateCode(
-//           codeEntry.id,
-//           codeEntry.code,
-//           0,
-//           (err, updateResult) => {
-//             if (err) {
-//               return res
-//                 .status(500)
-//                 .json({ message: "Failed to update invitation code status." });
-//             }
-
-//             res.status(200).json({
-//               message:
-//                 "User registered successfully, invitation code marked as inactive.",
-//             });
-//           }
-//         );
-//       });
-//     });
-//   } catch (error) {
-//     res.status(500).json({ message: "An error occurred.", error });
-//   }
-// });
-
 // Login endpoint
 router.post("/login", (req, res) => {
-  const { contactInfo, password } = req.body;
-  userModel.getUserByContactInfo(contactInfo, (err, user) => {
+  const { email, phoneNumber, password } = req.body;
+
+  // Ensure at least one of email or phoneNumber is provided
+  if (!email && !phoneNumber) {
+    return res
+      .status(400)
+      .json({ message: "Either email or phone number is required" });
+  }
+
+  userModel.getUserByContactInfo(email || phoneNumber, (err, user) => {
     if (err) {
       return res
         .status(500)
@@ -104,20 +75,50 @@ router.post("/login", (req, res) => {
     }
 
     const rol_manage = user.role;
+    const firstName = user.firstname;
+    const lastName = user.lastname;
 
     const token = jwt.sign({ id: user.id }, "your_jwt_secret", {
       expiresIn: "1h",
     });
 
-    if (rol_manage === "admin") {
-      res.status(200).json({ token, role: "admin" });
-    } else if (rol_manage === "superadmin") {
-      res.status(200).json({ token, role: "superadmin" });
-    } else if (rol_manage === "user") {
-      res.status(200).json({ token, role: "user" });
-    } else {
-      res.status(500).json({ message: "Unknown role" });
+    res.status(200).json({
+      token,
+      role: rol_manage,
+      firstName: firstName,
+      lastName: lastName,
+    });
+  });
+});
+
+// Get all users (excluding passwords)
+router.get("/users", verifyAdmin, (req, res) => {
+  userModel.getAllUsers((err, users) => {
+    if (err) {
+      return res.status(500).json({ message: "An error occurred", error: err });
     }
+    // Exclude passwords from user objects
+    const usersWithoutPasswords = users.map(({ password, ...user }) => user);
+    res.status(200).json(usersWithoutPasswords);
+  });
+});
+
+router.post("/change-password", (req, res) => {
+  const { userId, oldPassword, newPassword } = req.body;
+
+  // Ensure all required fields are provided
+  if (!userId || !oldPassword || !newPassword) {
+    console.log(userId, oldPassword, newPassword)
+    return res.status(400).json({
+      message: "User ID, old password, and new password are required",
+    });
+  }
+
+  userModel.changePassword(userId, oldPassword, newPassword, (err, result) => {
+    if (err) {
+      return res.status(500).json({ message: err.message });
+    }
+    res.status(200).json(result);
   });
 });
 
