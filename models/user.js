@@ -104,6 +104,17 @@ const User = {
     });
   },
 
+  updateUserRole: (userId, newRole, callback) => {
+    // Make sure to sanitize and validate inputs in a real application
+    const query = "UPDATE users SET role = ? WHERE id = ?";
+    db.query(query, [newRole, userId], (err, results) => {
+      if (err) {
+        return callback(err);
+      }
+      callback(null, results);
+    });
+  },
+
   changePassword: (userId, oldPassword, newPassword, callback) => {
     // Validate the new password
     const passwordValidationError = validatePassword(newPassword);

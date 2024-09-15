@@ -3,6 +3,7 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const userModel = require("../models/user");
 const codeModel = require("../models/code");
+const messageModel = require("../models/message");
 
 const router = express.Router();
 
@@ -108,7 +109,7 @@ router.post("/change-password", (req, res) => {
 
   // Ensure all required fields are provided
   if (!userId || !oldPassword || !newPassword) {
-    console.log(userId, oldPassword, newPassword)
+    console.log(userId, oldPassword, newPassword);
     return res.status(400).json({
       message: "User ID, old password, and new password are required",
     });
@@ -119,6 +120,118 @@ router.post("/change-password", (req, res) => {
       return res.status(500).json({ message: err.message });
     }
     res.status(200).json(result);
+  });
+});
+router.post("/update-role", verifyAdmin, (req, res) => {
+  const { userId, newRole } = req.body;
+
+  // Validate that userId and newRole are provided
+  if (!userId || !newRole) {
+    return res.status(400).json({
+      message: "User ID and new role are required",
+    });
+  }
+
+  // Ensure the newRole is valid (e.g., 'admin' or 'user')
+  const validRoles = ["admin", "user", "superadmin"];
+  if (!validRoles.includes(newRole.toLowerCase())) {
+    return res.status(400).json({
+      message: "Invalid role provided",
+    });
+  }
+
+  userModel.updateUserRole(userId, newRole, (err, result) => {
+    if (err) {
+      return res.status(500).json({ message: err.message });
+    }
+    res.status(200).json({ message: "User role updated successfully" });
+  });
+});
+
+// Endpoint to send a message
+router.post("/send", verifyAdmin, (req, res) => {
+  const { recipientId, content, read_status } = req.body;
+  const senderId = req.body.userId; // Ensure you have the sender's ID from the request (e.g., from a JWT token)
+
+  if (!recipientId || !content) {
+    return res
+      .status(400)
+      .json({ message: "Recipient ID and content are required" });
+  }
+
+  messageModel.createMessage(
+    senderId,
+    recipientId,
+    content,
+    read_status,
+    (err, result) => {
+      if (err) {
+        console.log(err);
+        return res.status(500).json({ message: err.message });
+      }
+      res.status(200).json({ message: "Message sent successfully" });
+    }
+  );
+});
+
+// Endpoint to get messages for a user
+router.get("/user/:userId", (req, res) => {
+  const { userId } = req.params;
+
+  messageModel.getMessagesForUser(userId, (err, messages) => {
+    if (err) {
+      return res.status(500).json({ message: err.message });
+    }
+    if (!userId) {
+      return res.status(400).json({ message: "Message ID is required" });
+    }
+
+    messageModel.markMessageAsRead(userId, (err, result) => {
+      if (err) {
+        return res.status(500).json({ message: err.message });
+      }
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ message: "Message not found" });
+      }
+    });
+
+    res.status(200).json(messages);
+  });
+});
+
+// Endpoint to delete a message
+router.post("/message-delete/:messageId", (req, res) => {
+  const { messageId } = req.params;
+  const userId = req.body.userId;
+  console.log(req.body.userId);
+  if (!messageId) {
+    return res.status(400).json({ message: "Message ID is required" });
+  }
+
+  messageModel.deleteMessage(messageId, (err, result) => {
+    if (err) {
+      return res.status(500).json({ message: err.message });
+    }
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "Message not found" });
+    }
+    messageModel.getMessagesForUser(userId, (err, messages) => {
+      if (err) {
+        return res.status(500).json({ message: err.message });
+      }
+      res.status(200).json(messages);
+    });
+  });
+});
+
+router.get("/user/:userId/unread", (req, res) => {
+  const { userId } = req.params;
+
+  messageModel.getUnreadMessagesForUser(userId, (err, messages) => {
+    if (err) {
+      return res.status(500).json({ message: err.message });
+    }
+    res.status(200).json(messages);
   });
 });
 
