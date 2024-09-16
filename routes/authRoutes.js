@@ -188,7 +188,7 @@ router.get("/user/:userId", (req, res) => {
 
     messageModel.markMessageAsRead(userId, (err, result) => {
       if (err) {
-        return res.status(500).json({ message: err.message });
+        return console.log(err);
       }
       if (result.affectedRows === 0) {
         return res.status(404).json({ message: "Message not found" });

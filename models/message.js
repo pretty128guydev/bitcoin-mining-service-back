@@ -72,11 +72,26 @@ const getUnreadMessagesForUser = (userId, callback) => {
 };
 
 const markMessageAsRead = (recipient_id, callback) => {
-  const query = "UPDATE messages SET read_status = ? WHERE recipient_id = ?";
-  const values = ["read", recipient_id];
+  // Check if there are any messages for the recipient
+  const checkQuery =
+    "SELECT COUNT(*) as count FROM messages WHERE recipient_id = ?";
+  db.query(checkQuery, [recipient_id], (err, results) => {
+    if (err) {
+      return callback(err, null);
+    }
 
-  db.query(query, values, (err, result) => {
-    callback(err, result);
+    if (results[0].count === 0) {
+      return callback(new Error("No messages found for this recipient"), null);
+    }
+    console.log(results[0].count)
+
+    // If messages exist, update the read_status
+    const updateQuery =
+      "UPDATE messages SET read_status = ? WHERE recipient_id = ?";
+    const values = ["read", recipient_id];
+    db.query(updateQuery, values, (err, result) => {
+      callback(err, result);
+    });
   });
 };
 
