@@ -236,4 +236,9 @@ router.get("/user/:userId/unread", (req, res) => {
   });
 });
 
+
+router.post("/crypto_payment", (req, res) => {
+  console.log(req.body)
+});
+
 module.exports = router;
