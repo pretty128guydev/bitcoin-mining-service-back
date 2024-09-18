@@ -7,10 +7,7 @@ const app = express();
 
 const corsOpts = {
   origin: "*",
-
-  methods: ["GET", "POST"],
-
-  allowedHeaders: ["Content-Type"],
+  'Access-Control-Allow-Origin': '*',
 };
 
 app.use(cors(corsOpts));
