@@ -19,6 +19,7 @@ const verifyAdmin = (req, res, next) => {
 // Register endpoint
 router.post("/register", (req, res) => {
   const { firstName, lastName, password, email, phoneNumber, role } = req.body;
+  console.log(firstName, lastName, password, email, phoneNumber, role);
   // Validate that either email or phoneNumber is provided
   if (!email && !phoneNumber) {
     return res
@@ -35,7 +36,7 @@ router.post("/register", (req, res) => {
     role,
     (err, result) => {
       if (err) {
-        console.log(err)
+        console.log(err);
         return res.status(500).json({ message: err.message });
       }
       res.status(200).json({ message: "User registered successfully" });
