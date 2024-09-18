@@ -12,7 +12,8 @@ const db = mysql.createConnection({
 db.connect((err) => {
   if (err) throw err;
   console.log("Connected to MySQL");
-  db.query(`USE ${process.env.DB_NAME};`);
+  db.query("USE bitcoin_mining;");
+  db.query("SHOW TABLES;")
 });
 
 module.exports = db;
