@@ -19,7 +19,6 @@ const verifyAdmin = (req, res, next) => {
 // Register endpoint
 router.post("/register", (req, res) => {
   const { firstName, lastName, password, email, phoneNumber, role } = req.body;
-
   // Validate that either email or phoneNumber is provided
   if (!email && !phoneNumber) {
     return res
