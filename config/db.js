@@ -3,7 +3,7 @@ const path = require("path");
 require("dotenv").config({ path: path.join(__dirname, "../.env") });
 
 const db = mysql.createConnection({
-  host: "localhost",
+  host: "192.168.11.56:3306",
   user: "root",
   password: "",
   database: process.env.DB_NAME,
