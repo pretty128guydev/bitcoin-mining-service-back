@@ -243,8 +243,9 @@ router.get("/user/:userId/unread", (req, res) => {
 });
 
 router.post("/crypto_payment", (req, res) => {
-  const NOWPAYMENTS_API_KEY = "PF46E4J-ZCW4KRA-MT373EW-BAQXSHQ";
-  console.log(req.body.payment_id);
+  console.log("hello")
+  const NOWPAYMENTS_API_KEY = "S21P2D0-YF6M4WH-KKS6TX5-34NWND7";
+  console.log(req.body);
   const payment_id = req.body.payment_id;
   axios
     .post(`https://api.nowpayments.io/v1/payment/${payment_id}`, {
@@ -262,7 +263,6 @@ router.post("/crypto_payment", (req, res) => {
 router.post("/create_payment", (req, res) => {
   const { amount, pay_currency, sender_id, price_currency } = req.body;
   const NOWPAYMENTS_API_KEY = "PF46E4J-ZCW4KRA-MT373EW-BAQXSHQ";
-
   // Prepare the payment data
   const paymentData = {
     price_amount: amount,
