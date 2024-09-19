@@ -262,7 +262,7 @@ router.post("/crypto_payment", (req, res) => {
 
 router.post("/create_payment", (req, res) => {
   const { amount, pay_currency, sender_id, price_currency } = req.body;
-  const NOWPAYMENTS_API_KEY = "PF46E4J-ZCW4KRA-MT373EW-BAQXSHQ";
+  const NOWPAYMENTS_API_KEY = "S21P2D0-YF6M4WH-KKS6TX5-34NWND7";
   // Prepare the payment data
   const paymentData = {
     price_amount: amount,
