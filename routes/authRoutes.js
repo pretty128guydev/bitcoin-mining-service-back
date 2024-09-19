@@ -244,9 +244,10 @@ router.get("/user/:userId/unread", (req, res) => {
 
 router.post("/crypto_payment", (req, res) => {
   const NOWPAYMENTS_API_KEY = "PF46E4J-ZCW4KRA-MT373EW-BAQXSHQ";
-  console.log(req.body);
+  console.log(req.body.payment_id);
+  const payment_id = req.body.payment_id;
   axios
-    .post("https://api.nowpayments.io/v1/payment", {
+    .post(`https://api.nowpayments.io/v1/payment/${payment_id}`, {
       headers: {
         "x-api-key": NOWPAYMENTS_API_KEY,
         "Content-Type": "application/json",
