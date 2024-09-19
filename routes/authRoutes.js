@@ -243,7 +243,7 @@ router.get("/user/:userId/unread", (req, res) => {
 });
 
 router.post("/crypto_payment", (req, res) => {
-  console.log("hello")
+  console.log("hello");
   const NOWPAYMENTS_API_KEY = "S21P2D0-YF6M4WH-KKS6TX5-34NWND7";
   console.log(req.body);
   const payment_id = req.body.payment_id;
@@ -261,22 +261,23 @@ router.post("/crypto_payment", (req, res) => {
 });
 
 router.post("/create_payment", (req, res) => {
-  const { amount, pay_currency, sender_id, price_currency } = req.body;
+  const { amount, sender_id, price_currency } = req.body;
   const NOWPAYMENTS_API_KEY = "S21P2D0-YF6M4WH-KKS6TX5-34NWND7";
   // Prepare the payment data
   const paymentData = {
     price_amount: amount,
     price_currency: price_currency,
-    pay_currency: pay_currency,
-    ipn_callback_url:
-      "https://bitcoin-mining-service-back-6p8l.onrender.com/api/crypto_payment",
     order_id: "PB_10000", // You can generate a dynamic order ID if necessary
     order_description: "Buy Package",
+    ipn_callback_url:
+      "https://bitcoin-mining-service-back-6p8l.onrender.com/api/crypto_payment",
+    success_url: `https://bitcoin-mining-service-back-6p8l.onrender.com/api/success_url`,
+    cancel_url: `https://bitcoin-mining-service-back-6p8l.onrender.com/api/cancel_url`,
   };
   console.log(paymentData);
   // Create a payment via the NowPayments API
   axios
-    .post("https://api.nowpayments.io/v1/payment", paymentData, {
+    .post("https://api.nowpayments.io/v1/invoice", paymentData, {
       headers: {
         "x-api-key": NOWPAYMENTS_API_KEY,
         "Content-Type": "application/json",
@@ -284,63 +285,52 @@ router.post("/create_payment", (req, res) => {
     })
     .then((response) => {
       const {
-        payment_id,
-        payment_status,
+        invoice_id,
+        order_description,
+        order_id,
+        outcome_amount,
+        outcome_currency,
+        parent_payment_id,
         pay_address,
+        pay_amount,
+        pay_currency,
+        payin_extra_id,
+        payment_status,
         price_amount,
         price_currency,
-        pay_amount,
-        amount_received,
-        pay_currency,
-        order_id,
-        order_description,
-        ipn_callback_url,
-        created_at,
         updated_at,
-        purchase_id,
-        network,
-        expiration_estimate_date,
-        valid_until,
-        type,
-        product,
-        origin_ip,
-        payin_extra_id,
-        smart_contract,
-        network_precision,
-        time_limit,
-        burning_percent,
-        recipient_id,
+        actually_paid,
+        actually_paid_at_fiat,
       } = response.data;
+      const fee_currency = response.data.fee.currency;
+      const fee_depositFee = response.data.fee.depositFee;
+      const fee_serviceFee = response.data.fee.serviceFee;
+      const fee_withdrawalFee = response.data.fee.withdrawalFee;
+
       console.log(response.data);
       // Construct the complete payment data
       const completePaymentData = {
-        payment_id,
+        invoice_id,
+        order_description,
         order_id,
-        price_amount,
-        price_currency,
+        outcome_amount,
+        outcome_currency,
+        parent_payment_id,
+        pay_address,
         pay_amount,
         pay_currency,
-        order_description,
-        pay_address,
-        ipn_callback_url,
-        payment_status,
-        amount_received,
-        created_at,
-        updated_at,
-        purchase_id,
         payin_extra_id,
-        smart_contract,
-        network,
-        network_precision,
-        time_limit,
-        burning_percent,
-        expiration_estimate_date,
+        payment_status,
+        price_amount,
+        price_currency,
+        updated_at,
         sender_id,
-        recipient_id,
-        valid_until,
-        type,
-        product,
-        origin_ip,
+        actually_paid,
+        actually_paid_at_fiat,
+        fee_currency,
+        fee_depositFee,
+        fee_serviceFee,
+        fee_withdrawalFee,
         balance: 0,
       };
 
@@ -353,33 +343,27 @@ router.post("/create_payment", (req, res) => {
 
         // Respond with the payment details
         res.json({
-          payment_id: payment_id,
+          invoice_id: invoice_id,
+          order_description: order_description,
           order_id: order_id,
-          price_amount: price_amount,
-          price_currency: price_currency,
+          outcome_amount: outcome_amount,
+          outcome_currency: outcome_currency,
+          parent_payment_id: parent_payment_id,
+          pay_address: pay_address,
           pay_amount: pay_amount,
           pay_currency: pay_currency,
-          order_description: order_description,
-          pay_address: pay_address,
-          ipn_callback_url: ipn_callback_url,
-          payment_status: payment_status,
-          amount_received: amount_received,
-          created_at: created_at,
-          updated_at: updated_at,
-          purchase_id: purchase_id,
           payin_extra_id: payin_extra_id,
-          smart_contract: smart_contract,
-          network: network,
-          network_precision: network_precision,
-          time_limit: time_limit,
-          burning_percent: burning_percent,
-          expiration_estimate_date: expiration_estimate_date,
+          payment_status: payment_status,
+          price_amount: price_amount,
+          price_currency: price_currency,
+          updated_at: updated_at,
           sender_id: sender_id,
-          recipient_id: recipient_id,
-          valid_until: valid_until,
-          type: type,
-          product: product,
-          origin_ip: origin_ip,
+          actually_paid: actually_paid,
+          actually_paid_at_fiat: actually_paid_at_fiat,
+          fee_currency: fee_currency,
+          fee_depositFee: fee_depositFee,
+          fee_serviceFee: fee_serviceFee,
+          fee_withdrawalFee: fee_withdrawalFee,
           balance: 0,
         });
       });
@@ -388,6 +372,20 @@ router.post("/create_payment", (req, res) => {
       console.error("Error creating payment via NowPayments API:", error);
       res.status(500).json({ error: error });
     });
+});
+
+router.post("/get_link/:paymentId", (req, res) => {
+  axios
+    .get(`https://api.nowpayments.io/v1/payment/${paymentId}`, {
+      headers: {
+        "x-api-key": NOWPAYMENTS_API_KEY,
+        "Content-Type": "application/json",
+      },
+    })
+    .then((response) => {
+      window.location.href = response.data.payment_link;
+    });
+  console.log(response);
 });
 
 // Endpoint to handle IPN callbacks
