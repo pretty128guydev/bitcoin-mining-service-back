@@ -269,7 +269,7 @@ router.post("/create_payment", (req, res) => {
     price_currency: price_currency,
     pay_currency: pay_currency,
     ipn_callback_url:
-      "https://https://bitcoin-mining-service-back-6p8l.onrender.com/api/crypto_payment",
+      "https://bitcoin-mining-service-back-6p8l.onrender.com/api/crypto_payment",
     order_id: "PB_10000", // You can generate a dynamic order ID if necessary
     order_description: "Buy Package",
   };
