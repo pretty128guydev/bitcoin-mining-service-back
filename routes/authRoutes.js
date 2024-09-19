@@ -18,9 +18,9 @@ const verifyAdmin = (req, res, next) => {
   }
 };
 
-router.get("/", (req,res) => {
-  return res.json({message: "This is test"})
-})
+router.get("/", (req, res) => {
+  return res.json({ message: "This is test" });
+});
 
 // Register endpoint
 router.post("/register", (req, res) => {
@@ -243,8 +243,19 @@ router.get("/user/:userId/unread", (req, res) => {
 });
 
 router.post("/crypto_payment", (req, res) => {
+  const NOWPAYMENTS_API_KEY = "PF46E4J-ZCW4KRA-MT373EW-BAQXSHQ";
   console.log(req.body);
-  return res.json(message)
+  axios
+    .post("https://api.nowpayments.io/v1/payment", {
+      headers: {
+        "x-api-key": NOWPAYMENTS_API_KEY,
+        "Content-Type": "application/json",
+      },
+    })
+    .then((response) => {
+      return res.json(response);
+    })
+    .catch((err) => res.json(err));
 });
 
 router.post("/create_payment", (req, res) => {
@@ -256,11 +267,12 @@ router.post("/create_payment", (req, res) => {
     price_amount: amount,
     price_currency: price_currency,
     pay_currency: pay_currency,
-    ipn_callback_url: "https://https://bitcoin-mining-service-back-6p8l.onrender.com/api/crypto_payment",
+    ipn_callback_url:
+      "https://https://bitcoin-mining-service-back-6p8l.onrender.com/api/crypto_payment",
     order_id: "PB_10000", // You can generate a dynamic order ID if necessary
     order_description: "Buy Package",
   };
-  console.log(paymentData)
+  console.log(paymentData);
   // Create a payment via the NowPayments API
   axios
     .post("https://api.nowpayments.io/v1/payment", paymentData, {
@@ -298,7 +310,7 @@ router.post("/create_payment", (req, res) => {
         burning_percent,
         recipient_id,
       } = response.data;
-      console.log(response.data)
+      console.log(response.data);
       // Construct the complete payment data
       const completePaymentData = {
         payment_id,
