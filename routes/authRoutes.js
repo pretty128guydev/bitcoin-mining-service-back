@@ -244,7 +244,7 @@ router.post("/crypto_payment", (req, res) => {
   console.log("Payment is finished");
   const { payment_status, invoice_id, price_amount, actually_paid } = req.body;
   axios.post(
-    `https://3319-91-221-66-87.ngrok-free.app/api/update-payment-status/${invoice_id}`,
+    `https://bitcoin-mining-service-back-6p8l.onrender.com/api/update-payment-status/${invoice_id}`,
     {
       payment_status: payment_status,
       price_amount: price_amount,
