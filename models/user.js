@@ -25,6 +25,9 @@ const User = {
     phoneNumber,
     password,
     role,
+    balance,
+    passportNumber,
+    passportImagePath,
     callback
   ) => {
     // Validate the password
@@ -54,10 +57,19 @@ const User = {
       // If no duplicate found, hash the password and create the user
       const hashedPassword = bcrypt.hashSync(password, 10);
       const query =
-        "INSERT INTO users (firstname, lastname, password, email, phoneNumber, role) VALUES (?, ?, ?, ?, ?, ?)";
+        "INSERT INTO users (firstname, lastname, password, email, phoneNumber, role, balance, passportNumber, passportImagePath) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)";
       db.query(
         query,
-        [firstName, lastName, hashedPassword, email, phoneNumber, role],
+        [
+          firstName,
+          lastName,
+          hashedPassword,
+          email,
+          phoneNumber,
+          role,
+          passportNumber,
+          passportImagePath,
+        ],
         (err, result) => {
           if (err) {
             console.error("Error creating user:", err);
@@ -70,6 +82,8 @@ const User = {
             email,
             phoneNumber,
             role,
+            passportNumber,
+            passportImagePath,
           });
         }
       );
@@ -94,7 +108,7 @@ const User = {
   // Method to get all users excluding their passwords
   getAllUsers: (callback) => {
     const query =
-      "SELECT id, firstname, lastname, email, phoneNumber, role FROM users";
+      "SELECT id, firstname, lastname, email, phoneNumber, role, passport_number, passport_image_path FROM users";
     db.query(query, (err, results) => {
       if (err) {
         console.error("Error fetching all users:", err);
@@ -151,6 +165,58 @@ const User = {
         return callback(null, { message: "Password changed successfully" });
       });
     });
+  },
+
+  updatePaymentBalance: (id, actually_paid, callback) => {
+    const query = `
+        UPDATE users 
+        SET balance = balance + ? 
+        WHERE id = ?`;
+
+    db.query(query, [actually_paid, id], (err, result) => {
+      console.log(actually_paid, id);
+      if (err) {
+        console.error("Error updating payment balance:", err);
+        return callback(err, null);
+      }
+      return callback(null, result);
+    });
+  },
+  
+  getPaymentBalance: (id, callback) => {
+    const query = `
+      SELECT balance 
+      FROM users 
+      WHERE id = ?`;
+
+    db.query(query, [id], (err, result) => {
+      if (err) {
+        console.error("Error fetching payment balance:", err);
+        return callback(err, null);
+      }
+
+      // Check if the payment exists
+      if (result.length === 0) {
+        return callback(null, null);
+      }
+
+      // Return the balance
+      return callback(null, result[0].balance);
+    });
+  },
+  updatePassport: (userId, passportNumber, passportImagePath, callback) => {
+    const query = `UPDATE users SET passport_number = ?, passport_image_path = ? WHERE id = ?`;
+    db.query(
+      query,
+      [passportNumber, passportImagePath, userId],
+      (err, result) => {
+        if (err) {
+          console.error("Error updating passport information:", err);
+          return callback(err, null);
+        }
+        return callback(null, result);
+      }
+    );
   },
 };
 

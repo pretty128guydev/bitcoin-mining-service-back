@@ -6,6 +6,7 @@ const codeModel = require("../models/code");
 const messageModel = require("../models/message");
 const paymentsModel = require("../models/payments");
 const axios = require("axios");
+const multer = require("multer");
 
 const router = express.Router();
 
@@ -25,7 +26,6 @@ router.get("/", (req, res) => {
 // Register endpoint
 router.post("/register", (req, res) => {
   const { firstName, lastName, password, email, phoneNumber, role } = req.body;
-  console.log(firstName, lastName, password, email, phoneNumber, role);
   // Validate that either email or phoneNumber is provided
   if (!email && !phoneNumber) {
     return res
@@ -116,7 +116,6 @@ router.post("/change-password", (req, res) => {
 
   // Ensure all required fields are provided
   if (!userId || !oldPassword || !newPassword) {
-    console.log(userId, oldPassword, newPassword);
     return res.status(400).json({
       message: "User ID, old password, and new password are required",
     });
@@ -210,7 +209,6 @@ router.get("/user/:userId", (req, res) => {
 router.post("/message-delete/:messageId", (req, res) => {
   const { messageId } = req.params;
   const userId = req.body.userId;
-  console.log(req.body.userId);
   if (!messageId) {
     return res.status(400).json({ message: "Message ID is required" });
   }
@@ -243,21 +241,16 @@ router.get("/user/:userId/unread", (req, res) => {
 });
 
 router.post("/crypto_payment", (req, res) => {
-  console.log("hello");
-  const NOWPAYMENTS_API_KEY = "S21P2D0-YF6M4WH-KKS6TX5-34NWND7";
-  console.log(req.body);
-  const payment_id = req.body.payment_id;
-  axios
-    .post(`https://api.nowpayments.io/v1/payment/${payment_id}`, {
-      headers: {
-        "x-api-key": NOWPAYMENTS_API_KEY,
-        "Content-Type": "application/json",
-      },
-    })
-    .then((response) => {
-      return res.json(response);
-    })
-    .catch((err) => res.json(err));
+  console.log("Payment is finished");
+  const { payment_status, invoice_id, price_amount, actually_paid } = req.body;
+  axios.post(
+    `https://3319-91-221-66-87.ngrok-free.app/api/update-payment-status/${invoice_id}`,
+    {
+      payment_status: payment_status,
+      price_amount: price_amount,
+      actually_paid: actually_paid,
+    }
+  );
 });
 
 router.post("/create_payment", (req, res) => {
@@ -274,7 +267,6 @@ router.post("/create_payment", (req, res) => {
     success_url: `https://bitcoin-mining-service-back-6p8l.onrender.com/api/success_url`,
     cancel_url: `https://bitcoin-mining-service-back-6p8l.onrender.com/api/cancel_url`,
   };
-  console.log(paymentData);
   // Create a payment via the NowPayments API
   axios
     .post("https://api.nowpayments.io/v1/invoice", paymentData, {
@@ -285,52 +277,44 @@ router.post("/create_payment", (req, res) => {
     })
     .then((response) => {
       const {
-        invoice_id,
-        order_description,
+        token_id,
         order_id,
-        outcome_amount,
-        outcome_currency,
-        parent_payment_id,
-        pay_address,
-        pay_amount,
-        pay_currency,
-        payin_extra_id,
-        payment_status,
+        order_description,
         price_amount,
         price_currency,
+        pay_currency,
+        ipn_callback_url,
+        invoice_url,
+        success_url,
+        cancel_url,
+        customer_email,
+        partially_paid_url,
+        created_at,
         updated_at,
-        actually_paid,
-        actually_paid_at_fiat,
+        is_fixed_rate,
+        is_fee_paid_by_user,
       } = response.data;
-      const fee_currency = response.data.fee.currency;
-      const fee_depositFee = response.data.fee.depositFee;
-      const fee_serviceFee = response.data.fee.serviceFee;
-      const fee_withdrawalFee = response.data.fee.withdrawalFee;
-
-      console.log(response.data);
+      const invoice_id = response.data.id;
       // Construct the complete payment data
       const completePaymentData = {
         invoice_id,
-        order_description,
+        token_id,
         order_id,
-        outcome_amount,
-        outcome_currency,
-        parent_payment_id,
-        pay_address,
-        pay_amount,
-        pay_currency,
-        payin_extra_id,
-        payment_status,
+        order_description,
         price_amount,
         price_currency,
+        pay_currency,
+        ipn_callback_url,
+        invoice_url,
+        success_url,
+        cancel_url,
+        customer_email,
+        partially_paid_url,
+        created_at,
         updated_at,
+        is_fixed_rate,
+        is_fee_paid_by_user,
         sender_id,
-        actually_paid,
-        actually_paid_at_fiat,
-        fee_currency,
-        fee_depositFee,
-        fee_serviceFee,
-        fee_withdrawalFee,
         balance: 0,
       };
 
@@ -344,26 +328,23 @@ router.post("/create_payment", (req, res) => {
         // Respond with the payment details
         res.json({
           invoice_id: invoice_id,
-          order_description: order_description,
+          token_id,
           order_id: order_id,
-          outcome_amount: outcome_amount,
-          outcome_currency: outcome_currency,
-          parent_payment_id: parent_payment_id,
-          pay_address: pay_address,
-          pay_amount: pay_amount,
-          pay_currency: pay_currency,
-          payin_extra_id: payin_extra_id,
-          payment_status: payment_status,
+          order_description: order_description,
           price_amount: price_amount,
           price_currency: price_currency,
+          pay_currency: pay_currency,
+          ipn_callback_url: ipn_callback_url,
+          invoice_url: invoice_url,
+          success_url: success_url,
+          cancel_url: cancel_url,
+          customer_email: customer_email,
+          partially_paid_url: partially_paid_url,
+          created_at: created_at,
           updated_at: updated_at,
+          is_fixed_rate: is_fixed_rate,
+          is_fee_paid_by_user: is_fee_paid_by_user,
           sender_id: sender_id,
-          actually_paid: actually_paid,
-          actually_paid_at_fiat: actually_paid_at_fiat,
-          fee_currency: fee_currency,
-          fee_depositFee: fee_depositFee,
-          fee_serviceFee: fee_serviceFee,
-          fee_withdrawalFee: fee_withdrawalFee,
           balance: 0,
         });
       });
@@ -374,32 +355,133 @@ router.post("/create_payment", (req, res) => {
     });
 });
 
-router.post("/get_link/:paymentId", (req, res) => {
-  axios
-    .get(`https://api.nowpayments.io/v1/payment/${paymentId}`, {
-      headers: {
-        "x-api-key": NOWPAYMENTS_API_KEY,
-        "Content-Type": "application/json",
-      },
-    })
-    .then((response) => {
-      window.location.href = response.data.payment_link;
-    });
-  console.log(response);
-});
+router.post("/update-payment-status/:invoice_id", (req, res) => {
+  const { invoice_id } = req.params;
+  const { payment_status, price_amount, actually_paid } = req.body;
 
-// Endpoint to handle IPN callbacks
-router.post("/ipn-callback", (req, res) => {
-  const { payment_id, payment_status, amount_received } = req.body;
+  // Validate input
+  if (!payment_status) {
+    return res.status(400).json({ message: "payment is required." });
+  }
+  paymentsModel.getPaymentById(invoice_id, (err, result) => {
+    const id = result.sender_id;
+    if (!result) {
+      return res.json({ message: "that invoice id isn't existing" });
+    } else if (result.payment_status === "finished") {
+      return res.json({ message: "it is already finished" });
+    } else {
+      if (actually_paid < price_amount) {
+        userModel.updatePaymentBalance(id, actually_paid, (err, result) => {
+          if (err) {
+            console.error("Error updating payment balance:", err);
+            return res
+              .status(500)
+              .json({ message: "Error updating payment balance" });
+          }
 
-  // Update payment status in the database
-  const sql = `UPDATE payments SET payment_status = ?, amount_received = ? WHERE payment_id = ?`;
-  const values = [payment_status, amount_received, payment_id];
+          // Check if the update was successful
+          if (result.affectedRows === 0) {
+            return res.status(404).json({ message: "Payment not found" });
+          }
 
-  db.query(sql, values, (err, result) => {
-    if (err) throw err;
-    res.sendStatus(200);
+          console.log("Payment balance updated successfully");
+        });
+        return res.json({ message: "The quantity was not fully transferred." });
+      } else {
+        // Update the payment status in the database
+        paymentsModel.updatePaymentStatus(
+          invoice_id,
+          payment_status,
+          (err, result) => {
+            if (err) {
+              console.error("Error updating payment status:", err);
+              return res
+                .status(500)
+                .json({ message: "Error updating payment status" });
+            } else {
+              userModel.updatePaymentBalance(
+                id,
+                actually_paid,
+                (err, result) => {
+                  if (err) {
+                    console.error("Error updating payment balance:", err);
+                    return res
+                      .status(500)
+                      .json({ message: "Error updating payment balance" });
+                  }
+
+                  // Check if the update was successful
+                  if (result.affectedRows === 0) {
+                    return res
+                      .status(404)
+                      .json({ message: "Payment not found" });
+                  }
+
+                  res
+                    .status(200)
+                    .json({ message: "Payment balance updated successfully" });
+                }
+              );
+            }
+          }
+        );
+      }
+    }
   });
 });
 
+// Endpoint to get payment balance
+router.post("/get-balance/:id", (req, res) => {
+  const { id } = req.params;
+
+  // Fetch the balance from the database
+  userModel.getPaymentBalance(id, (err, balance) => {
+    if (err) {
+      console.error("Error fetching payment balance:", err);
+      return res
+        .status(500)
+        .json({ message: "Error fetching payment balance" });
+    }
+
+    res.status(200).json({ balance: balance });
+  });
+});
+
+// Configure multer for file upload
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, "uploads/passport_images"); // Path to save images
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + "-" + file.originalname);
+  },
+});
+const upload = multer({ storage: storage });
+
+router.post("/update-passport", upload.single("passportImage"), (req, res) => {
+  const { userId, passportNumber } = req.body;
+  const passportImagePath = req.file ? req.file.path : null;
+
+  // Ensure the user is logged in (you might want to check session or token)
+  if (!userId) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  // Update passport number and image in the database
+  userModel.updatePassport(
+    userId,
+    passportNumber,
+    passportImagePath,
+    (err, result) => {
+      if (err) {
+        return res
+          .status(500)
+          .json({ message: "Error updating passport information", error: err });
+      }
+      return res
+        .status(200)
+        .json({ message: "Passport information updated successfully" });
+    }
+  );
+});
 module.exports = router;
