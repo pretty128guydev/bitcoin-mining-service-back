@@ -1,5 +1,7 @@
 const db = require("../config/db");
 const bcrypt = require("bcryptjs");
+const moment = require("moment");
+const cron = require("node-cron");
 
 // Function to validate password
 const validatePassword = (password) => {
@@ -108,7 +110,7 @@ const User = {
   // Method to get all users excluding their passwords
   getAllUsers: (callback) => {
     const query =
-      "SELECT id, firstname, lastname, email, phoneNumber, role, passport_number, passport_image_path FROM users";
+      "SELECT id, firstname, lastname, email, phoneNumber, role, passport_number, passport_image_path, balance FROM users";
     db.query(query, (err, results) => {
       if (err) {
         console.error("Error fetching all users:", err);
@@ -122,6 +124,17 @@ const User = {
     // Make sure to sanitize and validate inputs in a real application
     const query = "UPDATE users SET role = ? WHERE id = ?";
     db.query(query, [newRole, userId], (err, results) => {
+      if (err) {
+        return callback(err);
+      }
+      callback(null, results);
+    });
+  },
+
+  updateUserPassportVerificated: (userId, newverificated, callback) => {
+    // Make sure to sanitize and validate inputs in a real application
+    const query = "UPDATE users SET passport_verificated = ? WHERE id = ?";
+    db.query(query, [newverificated, userId], (err, results) => {
       if (err) {
         return callback(err);
       }
@@ -182,7 +195,7 @@ const User = {
       return callback(null, result);
     });
   },
-  
+
   getPaymentBalance: (id, callback) => {
     const query = `
       SELECT balance 
@@ -204,6 +217,28 @@ const User = {
       return callback(null, result[0].balance);
     });
   },
+
+  getPassportVerificated: (id, callback) => {
+    const query = `
+      SELECT passport_verificated 
+      FROM users 
+      WHERE id = ?`;
+
+    db.query(query, [id], (err, result) => {
+      if (err) {
+        console.error("Error fetching payment balance:", err);
+        return callback(err, null);
+      }
+
+      // Check if the payment exists
+      if (result.length === 0) {
+        return callback(null, null);
+      }
+
+      // Return the balance
+      return callback(null, result[0].passport_verificated);
+    });
+  },
   updatePassport: (userId, passportNumber, passportImagePath, callback) => {
     const query = `UPDATE users SET passport_number = ?, passport_image_path = ? WHERE id = ?`;
     db.query(
@@ -218,6 +253,124 @@ const User = {
       }
     );
   },
+
+  updatePackage: (userId, packagePrice, packageRole, callback) => {
+    const packageStatus = "active"; // Set status to active
+    const buyAt = new Date(); // Store the current timestamp when purchased
+
+    // Update package details based on userId and packageId
+    const query = `
+      UPDATE users
+      SET package_price = ?, package_role = ?, buy_at = ?, package_status = ?
+      WHERE id = ?`;
+
+    db.query(
+      query,
+      [packagePrice, packageRole, buyAt, packageStatus, userId],
+      (err, result) => {
+        if (err) {
+          console.error("Error updating package information:", err);
+          return callback(err, null);
+        }
+        return callback(null, result);
+      }
+    );
+  },
+
+  // Fetch package details method (with buy_at timestamp)
+  getUserPackageDetails: (userId, callback) => {
+    const query = `SELECT package_price, package_role, buy_at, package_status 
+                   FROM packages WHERE id = ? AND package_status = 'active'`;
+
+    db.query(query, [userId], (err, result) => {
+      if (err) {
+        console.error("Error fetching package details:", err);
+        return callback(err, null);
+      }
+
+      if (result.length === 0) {
+        return callback(null, null); // No active package
+      }
+
+      return callback(null, result[0]);
+    });
+  },
+
+  // startBalanceIncrease: (userId, packageRole, callback) => {
+  //   const now = moment().format("YYYY-MM-DD HH:mm:ss");
+  //   const oneHourLater = moment().add(1, "hour").format("YYYY-MM-DD HH:mm:ss");
+
+  //   const query = `
+  //     UPDATE users
+  //     SET balance_increase_start = ?, 
+  //         balance_increase_end = ?, 
+  //         package_role = ?
+  //     WHERE id = ?`;
+
+  //   db.query(query, [now, oneHourLater, packageRole, userId], (err, result) => {
+  //     if (err) {
+  //       console.error("Error starting balance increase:", err);
+  //       return callback(err, null);
+  //     }
+  //     callback(null, { message: "Balance increase started" });
+  //   });
+  // },
 };
 
 module.exports = User;
+
+// cron.schedule("* * * * *", () => {
+//   // Fetch users with active balance increases
+//   const query = `
+//     SELECT id, package_role, balance_increase_end
+//     FROM users
+//     WHERE balance_increase_start IS NOT NULL 
+//       AND balance_increase_end > NOW()
+//       AND package_role IS NOT NULL`;
+
+//   db.query(query, (err, users) => {
+//     if (err) {
+//       console.error("Error fetching users for balance update:", err);
+//       return;
+//     }
+
+//     users.forEach((user) => {
+//       // Ensure package_role is a numeric value and not null
+//       const increaseAmount = parseFloat(user.package_role);
+//       if (isNaN(increaseAmount)) {
+//         console.error(`Invalid package_role value for user ${user.id}`);
+//         return;
+//       }
+
+//       // Directly increase the balance by package_role
+//       const updateQuery = `
+//         UPDATE users 
+//         SET balance = balance + ?
+//         WHERE id = ?`;
+
+//       db.query(updateQuery, [increaseAmount, user.id], (err, result) => {
+//         if (err) {
+//           console.error(`Error updating balance for user ${user.id}:`, err);
+//         } else {
+//           console.log(`Balance updated for user ${user.id}`);
+//         }
+//       });
+//     });
+
+//     // Deactivate expired balance increases
+//     const deactivateQuery = `
+//       UPDATE users
+//       SET balance_increase_start = NULL,
+//           balance_increase_end = NULL,
+//           package_role = NULL
+//       WHERE balance_increase_end <= NOW()`;
+
+//     db.query(deactivateQuery, (err, result) => {
+//       if (err) {
+//         console.error("Error deactivating expired balance increases:", err);
+//       } else {
+//         console.log("Expired balance increases deactivated.");
+//       }
+//     });
+//   });
+// });

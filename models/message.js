@@ -83,7 +83,7 @@ const markMessageAsRead = (recipient_id, callback) => {
     if (results[0].count === 0) {
       return callback(new Error("No messages found for this recipient"), null);
     }
-    console.log(results[0].count)
+    console.log(results[0].count);
 
     // If messages exist, update the read_status
     const updateQuery =

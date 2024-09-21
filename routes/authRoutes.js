@@ -5,6 +5,7 @@ const userModel = require("../models/user");
 const codeModel = require("../models/code");
 const messageModel = require("../models/message");
 const paymentsModel = require("../models/payments");
+const io = require("../utils/websocket");
 const axios = require("axios");
 const multer = require("multer");
 
@@ -178,6 +179,18 @@ router.post("/send", verifyAdmin, (req, res) => {
       res.status(200).json({ message: "Message sent successfully" });
     }
   );
+
+  // Fetch unread messages for the user
+  messageModel.getUnreadMessagesForUser(recipientId, (err, unreadMessages) => {
+    if (err) {
+      console.error("Error fetching unread messages:", err);
+    } else {
+      const unread_messages = unreadMessages.length;
+      console.log(unread_messages);
+      // Emit the unread messages back to the frontend
+      io.emit("unreadMessagesResponse", unread_messages, recipientId);
+    }
+  });
 });
 
 // Endpoint to get messages for a user
@@ -199,9 +212,9 @@ router.get("/user/:userId", (req, res) => {
       if (result.affectedRows === 0) {
         return res.status(404).json({ message: "Message not found" });
       }
+      const count = result.length;
+      res.status(200).json({ messages: messages, count: count });
     });
-
-    res.status(200).json(messages);
   });
 });
 
@@ -231,6 +244,7 @@ router.post("/message-delete/:messageId", (req, res) => {
 
 router.get("/user/:userId/unread", (req, res) => {
   const { userId } = req.params;
+  console.log(userId);
 
   messageModel.getUnreadMessagesForUser(userId, (err, messages) => {
     if (err) {
@@ -251,6 +265,18 @@ router.post("/crypto_payment", (req, res) => {
       actually_paid: actually_paid,
     }
   );
+  paymentsModel.getPaymentById(invoice_id, (err, result) => {
+    const id = result.sender_id;
+    userModel.getPaymentBalance(id, (err, balance) => {
+      if (err) {
+        console.error("Error fetching payment balance:", err);
+        return res
+          .status(500)
+          .json({ message: "Error fetching payment balance" });
+      }
+      io.emit("balanceResponse", balance, actually_paid);
+    });
+  });
 });
 
 router.post("/create_payment", (req, res) => {
@@ -478,10 +504,88 @@ router.post("/update-passport", upload.single("passportImage"), (req, res) => {
           .status(500)
           .json({ message: "Error updating passport information", error: err });
       }
+      const newverificated = "verified";
+      userModel.updateUserPassportVerificated(
+        userId,
+        newverificated,
+        (err, result) => {
+          if (err) {
+            return res.status(500).json({ message: err.message });
+          }
+          console.log("verificated updated successfully");
+        }
+      );
       return res
         .status(200)
         .json({ message: "Passport information updated successfully" });
     }
   );
+});
+
+router.post("/get-passport/:id", (req, res) => {
+  const { id } = req.params;
+
+  // Fetch the balance from the database
+  userModel.getPassportVerificated(id, (err, passport_verificated) => {
+    if (err) {
+      console.error("Error fetching passport verificated:", err);
+      return res
+        .status(500)
+        .json({ message: "Error fetching passport verificated" });
+    }
+    console.log(passport_verificated);
+    res.status(200).json({ passport_verificated: passport_verificated });
+  });
+});
+
+router.post("/update_payment_balance/:id", (req, res) => {
+  const { id } = req.params;
+  const balanceminus = req.body.unlockPrice;
+  const newbalance = -Number(balanceminus);
+  userModel.updatePaymentBalance(id, newbalance, (err, result) => {
+    if (err) {
+      console.error("Error updating payment balance:", err);
+      return res
+        .status(500)
+        .json({ message: "Error updating payment balance" });
+    }
+
+    // Check if the update was successful
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "Payment not found" });
+    }
+
+    userModel.getPaymentBalance(id, (err, balance) => {
+      if (err) {
+        console.error("Error fetching payment balance:", err);
+        return res
+          .status(500)
+          .json({ message: "Error fetching payment balance" });
+      }
+      io.emit("package_bought", balance, balanceminus);
+      res.status(200).json({ balance });
+    });
+  });
+
+  router.post("/update-package/:userId", (req, res) => {
+    const { userId } = req.params;
+    const { packagePrice, packageRole } = req.body;
+
+    userModel.updatePackage(
+      userId,
+      packagePrice,
+      packageRole,
+      (err, result) => {
+        if (err) {
+          return res
+            .status(500)
+            .json({ message: "Error updating package", error: err });
+        }
+        return res
+          .status(200)
+          .json({ message: "Package updated successfully", result });
+      }
+    );
+  });
 });
 module.exports = router;
