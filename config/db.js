@@ -1,15 +1,19 @@
-const mysql = require('mysql2');
+const mysql = require("mysql2");
+const path = require("path");
+require("dotenv").config({ path: path.join(__dirname, "../.env") });
 
 const db = mysql.createConnection({
-  host: 'localhost',
-  user: 'root',
-  password: '',
-  database: 'bitcoin_mining',
+  host: process.env.DB_HOST,
+  port: process.env.DB_PORT,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSKEY,
+  database: process.env.DB_NAME,
 });
-
-db.connect(err => {
+db.connect((err) => {
   if (err) throw err;
-  console.log('Connected to MySQL');
+  console.log("Connected to MySQL");
+  db.query("USE bitcoin_mining;");
+  db.query("SHOW TABLES;")
 });
 
 module.exports = db;
