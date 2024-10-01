@@ -10,7 +10,7 @@ const Code = {
         const query = 'SELECT * FROM invitation_codes';
         db.query(query, (err, results) => {
             if (err) {
-                console.error("Error fetching codes:", err);
+                console.error("Error fetching codes->", err);
                 return callback(err, null);
             }
             return callback(null, results);
@@ -22,7 +22,7 @@ const Code = {
         const query = 'SELECT * FROM invitation_codes WHERE code = ?';
         db.query(query, [code], (err, result) => {
             if (err) {
-                console.error("Error fetching code by CODE:", err);
+                console.error("Error fetching code by CODE->", err);
                 return callback(err, null);
             }
             return callback(null, result[0]);
@@ -34,7 +34,7 @@ const Code = {
         const query = 'INSERT INTO invitation_codes (code, status) VALUES (?, ?)';
         db.query(query, [code, status], (err, result) => {
             if (err) {
-                console.error("Error creating new code:", err);
+                console.error("Error creating new code->", err);
                 return callback(err, null);
             }
             return callback(null, { id: result.insertId, code, status });
@@ -46,7 +46,7 @@ const Code = {
         const query = 'UPDATE invitation_codes SET code = ?, status = ? WHERE id = ?';
         db.query(query, [code, status, id], (err, result) => {
             if (err) {
-                console.error("Error updating code:", err);
+                console.error("Error updating code->", err);
                 return callback(err, null);
             }
             return callback(null, result);
@@ -58,7 +58,6 @@ const Code = {
         const query = 'DELETE FROM invitation_codes WHERE id = ?';
         db.query(query, [id], (err, result) => {
             if (err) {
-                console.error("Error deleting code:", err);
                 return callback(err, null);
             }
             return callback(null, result);

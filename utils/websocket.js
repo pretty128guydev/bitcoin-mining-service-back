@@ -18,7 +18,7 @@ io.on("connection", (socket) => {
   //   // Fetch balance from the database
   //   userModel.getPaymentBalance(userId, (err, balance) => {
   //     if (err) {
-  //       console.error("Error fetching balance:", err);
+  //       console.error("Error fetching balance->", err);
   //       socket.emit("balanceError", "Error fetching balance");
   //     } else if (balance === null) {
   //       socket.emit("balanceError", "User not found");
@@ -33,7 +33,7 @@ io.on("connection", (socket) => {
   //   // Fetch unread messages for the user
   //   messageModel.getUnreadMessagesForUser(userId, (err, unreadMessages) => {
   //     if (err) {
-  //       console.error("Error fetching unread messages:", err);
+  //       console.error("Error fetching unread messages->", err);
   //       socket.emit("unreadMessagesError", "Error fetching unread messages");
   //     } else {
   //       const unread_messages = unreadMessages.length;

@@ -8,7 +8,7 @@ const paymentsModel = {
     const query = "SELECT * FROM payments";
     db.query(query, (err, results) => {
       if (err) {
-        console.error("Error fetching payments:", err);
+        console.error("Error fetching payments->", err);
         return callback(err, null);
       }
       return callback(null, results);
@@ -20,7 +20,7 @@ const paymentsModel = {
     const query = "SELECT * FROM payments WHERE invoice_id = ?";
     db.query(query, [invoice_id], (err, result) => {
       if (err) {
-        console.error("Error fetching payment by ID:", err);
+        console.error("Error fetching payment by ID->", err);
         return callback(err, null);
       }
       return callback(null, result[0]);
@@ -72,7 +72,7 @@ const paymentsModel = {
 
     db.query(query, values, (err, result) => {
       if (err) {
-        console.error("Error creating new payment:", err);
+        console.error("Error creating new payment->", err);
         return callback(err, null);
       }
       return callback(null, { id: result.insertId, ...paymentData });
@@ -83,7 +83,7 @@ const paymentsModel = {
     const query = "UPDATE payments SET payment_status = ? WHERE invoice_id = ?";
     db.query(query, [newStatus, invoice_id], (err, result) => {
       if (err) {
-        console.error("Error updating payment status:", err);
+        console.error("Error updating payment status->", err);
         return callback(err, null);
       }
       return callback(null, { invoice_id, newStatus });
