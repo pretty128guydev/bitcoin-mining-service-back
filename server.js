@@ -64,21 +64,31 @@ setInterval(() => {
                   if (result.affectedRows === 0) {
                     console.log("daily earning not found");
                   }
-                  const description = `Daily Eearning $${daily_earning}`;
-                  const amount = daily_earning;
-                  if (daily_earning != 0) {
-                    transactionModel.createTransaction(
-                      user.id,
-                      description,
-                      amount,
-                      (err, result) => {
-                        if (err) {
-                          console.log(`${err.message}`);
-                        }
-                        console.log("Payment is created");
-                      }
-                    );
-                  }
+                  const newclicked = "unclicked"
+                  userModel.updateClicked(user.id, newclicked, (err, result) => {
+                    if (err) {
+                      console.log("Error updating daily earning");
+                    }
+                    // Check if the update was successful
+                    if (result.affectedRows === 0) {
+                      console.log("daily earning not found");
+                    }
+                  })
+                  // if (daily_earning != 0) {
+                  // const description = `Daily Eearning $${daily_earning}`;
+                  // const amount = daily_earning;
+                  // transactionModel.createTransaction(
+                  //   user.id,
+                  //   description,
+                  //   amount,
+                  //   (err, result) => {
+                  //     if (err) {
+                  //       console.log(`${err.message}`);
+                  //     }
+                  //     console.log("Payment is created");
+                  //   }
+                  // );
+                  // }
                 })
               })
             }

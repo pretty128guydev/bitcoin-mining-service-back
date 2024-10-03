@@ -187,7 +187,33 @@ router.post("/update-pending", (req, res) => {
     if (result.affectedRows === 0) {
       return res.status(404).json({ message: "Payment not found" });
     }
+    userModel.getOneFee(userId, (err, one_fee) => {
+      if (err) {
+        console.error("Error fetching one fee->", err);
+        return res
+          .status(500)
+          .json({ message: "Error fetching one fee" });
+      }
+      userModel.updateTotalFee(
+        userId,
+        one_fee,
+        (err, result) => {
+          if (err) {
+            return res
+              .status(500)
+              .json({ message: "Error updating ElectronBalance" });
+          }
 
+          // Check if the update was successful
+          if (result.affectedRows === 0) {
+            return res
+              .status(404)
+              .json({ message: "ElectronBalance not found" });
+          }
+          console.log("update total fee successfully")
+        }
+      );
+    });
     console.log("Payment balance updated successfully");
   });
 
@@ -797,103 +823,118 @@ router.post("/update-package/:userId", (req, res) => {
 router.post("/button_clicks/:userId", (req, res) => {
   const { userId } = req.params;
 
-  userModel.getButtonClickcs(
-    userId,
-    (err, result) => {
-      if (err) {
-        return res
-          .status(500)
-          .json({ message: "Error get button clicks", error: err });
-      }
-      if (result < 500) {
-        userModel.getPackageRole(userId, (err, packagerole) => {
+  // userModel.getButtonClickcs(
+  //   userId,
+  //   (err, result) => {
+  //     if (err) {
+  //       return res
+  //         .status(500)
+  //         .json({ message: "Error get button clicks", error: err });
+  //     }
+  //     if (result < 500) {
+  userModel.getPackageRole(userId, (err, packagerole) => {
+    if (err) {
+      console.error("Error fetching payment balance->", err);
+      return res
+        .status(500)
+        .json({ message: "Error fetching payment balance" });
+    }
+    if (packagerole != null) {
+      userModel.updatePaymentBalance(userId, Number(packagerole), (err, result) => {
+        if (err) {
+          console.error("Error updating payment balance->", err);
+          return res
+            .status(500)
+            .json({ message: "Error updating payment balance" });
+        }
+        // Check if the update was successful
+        if (result.affectedRows === 0) {
+          return res.status(404).json({ message: "Payment not found" });
+        }
+        console.log("Payment balance updated successfully");
+        userModel.updateTotalIncome(userId, Number(packagerole), (err, result) => {
           if (err) {
-            console.error("Error fetching payment balance->", err);
+            console.error("Error updating total earning->", err);
             return res
               .status(500)
-              .json({ message: "Error fetching payment balance" });
+              .json({ message: "Error updating total earning" });
           }
-          if (packagerole != null) {
-            userModel.updatePaymentBalance(userId, Number(packagerole) / 500, (err, result) => {
+          // Check if the update was successful
+          if (result.affectedRows === 0) {
+            return res.status(404).json({ message: "total earning not found" });
+          }
+          console.log("total earning is increased")
+          userModel.updateDailyEarning(userId, Number(packagerole), (err, result) => {
+            if (err) {
+              console.error("Error updating daily earning->", err);
+              return res
+                .status(500)
+                .json({ message: "Error updating daily earning" });
+            }
+            // Check if the update was successful
+            if (result.affectedRows === 0) {
+              return res.status(404).json({ message: "daily earning not found" });
+            }
+            userModel.getPaymentBalance(userId, (err, balance) => {
               if (err) {
-                console.error("Error updating payment balance->", err);
+                console.error("Error fetching payment balance->", err);
                 return res
                   .status(500)
-                  .json({ message: "Error updating payment balance" });
+                  .json({ message: "Error fetching payment balance" });
               }
-              // Check if the update was successful
-              if (result.affectedRows === 0) {
-                return res.status(404).json({ message: "Payment not found" });
-              }
-              console.log("Payment balance updated successfully");
-              userModel.updateTotalIncome(userId, Number(packagerole) / 500, (err, result) => {
-                if (err) {
-                  console.error("Error updating total earning->", err);
-                  return res
-                    .status(500)
-                    .json({ message: "Error updating total earning" });
-                }
-                // Check if the update was successful
-                if (result.affectedRows === 0) {
-                  return res.status(404).json({ message: "total earning not found" });
-                }
-                console.log("total earning is increased")
-                userModel.updateDailyEarning(userId, Number(packagerole) / 500, (err, result) => {
+              io.emit("updatebalance", balance, userId);
+              const newclicked = "clicked"
+              userModel.updateClicked(
+                userId,
+                newclicked,
+                (err, result) => {
                   if (err) {
-                    console.error("Error updating daily earning->", err);
                     return res
                       .status(500)
-                      .json({ message: "Error updating daily earning" });
+                      .json({ message: "Error updating button clicks", error: err });
                   }
-                  // Check if the update was successful
-                  if (result.affectedRows === 0) {
-                    return res.status(404).json({ message: "daily earning not found" });
-                  }
-                  userModel.getPaymentBalance(userId, (err, balance) => {
-                    if (err) {
-                      console.error("Error fetching payment balance->", err);
-                      return res
-                        .status(500)
-                        .json({ message: "Error fetching payment balance" });
-                    }
-                    io.emit("updatebalance", balance, userId);
-                    userModel.updateButtonClicks(
-                      userId,
-                      (err, result) => {
-                        if (err) {
-                          return res
-                            .status(500)
-                            .json({ message: "Error updating button clicks", error: err });
-                        }
-                        userModel.getButtonClickcs(
-                          userId,
-                          (err, result) => {
-                            if (err) {
-                              return res
-                                .status(500)
-                                .json({ message: "Error get button clicks", error: err });
-                            }
-                            return res
-                              .status(200)
-                              .json({ result });
-                          }
-                        );
+                  const description = `Daily Eearning $${packagerole}`;
+                  const amount = packagerole;
+                  transactionModel.createTransaction(
+                    userId,
+                    description,
+                    amount,
+                    (err, result) => {
+                      if (err) {
+                        console.log(`${err.message}`);
                       }
-                    );
-                  });
-                })
-              })
+                      return res
+                        .status(200)
+                        .json({ message: "successfull clicked", packagerole: Number(packagerole) });
+                    }
+                  );
+                }
+              );
+              // userModel.updateButtonClicks(
+              //   userId,
+              //   (err, result) => {
+              //     if (err) {
+              //       return res
+              //         .status(500)
+              //         .json({ message: "Error updating button clicks", error: err });
+              //     }
+
+              //   }
+              // );
             });
-          } else {
-            console.log("not packagerole found")
-          }
+          })
         })
-      } else {
-        return res
-          .status(500)
-          .json({ message: "current button clicks is 500 now" });
-      }
-    });
+      });
+    } else {
+      console.log("not packagerole found")
+    }
+  })
+  // } else {
+  //   return res
+  //     .status(500)
+  //     .json({ message: "current button clicks is 500 now" });
+  // }
+  // });
 });
 
 
@@ -930,10 +971,11 @@ router.post("/get_package_status/:userId", (req, res) => {
 });
 
 router.post("/withdrawsend", (req, res) => {
-  const { recipientId, content, read_status, usdAmount } = req.body;
+  const { recipientId, content, read_status, allAmount } = req.body;
   const senderId = req.body.userId; // Ensure you have the sender's ID from the request (e.g., from a JWT token)
   const newstatus = "pending"
 
+  const amount = Number(allAmount)
   userModel.updateWithdrawStatus(senderId, newstatus, (err, result) => {
     if (err) {
       return res.status(500).json({ message: err.message });
@@ -955,7 +997,6 @@ router.post("/withdrawsend", (req, res) => {
     });
   });
 
-  amount = Number(usdAmount)
 
 
 
@@ -1147,7 +1188,7 @@ router.post("/get_security_password/:userId", (req, res) => {
 router.post("/get_total_earning/:userId", (req, res) => {
   const { userId } = req.params;
 
-  userModel.getPaymentBalance(id, (err, total_earning) => {
+  userModel.getPaymentBalance(userId, (err, total_earning) => {
     if (err) {
       console.error("Error fetching payment balance->", err);
       return res
@@ -1157,6 +1198,47 @@ router.post("/get_total_earning/:userId", (req, res) => {
     return res.status(200).json(total_earning)
   })
 });
+
+router.post("/get_clicked/:userId", (req, res) => {
+  const { userId } = req.params;
+
+  userModel.getClicked(userId, (err, clicked) => {
+    if (err) {
+      console.error("Error fetching payment balance->", err);
+      return res
+        .status(500)
+        .json({ message: "Error fetching clicked" });
+    }
+    return res.status(200).json(clicked)
+  })
+});
+
+router.post("/update_onefee/:userId", (req, res) => {
+  const { userId } = req.params;
+  const { newfee } = req.body;
+  userModel.updateOneFee(
+    userId,
+    newfee,
+    (err, result) => {
+      if (err) {
+        return res
+          .status(500)
+          .json({ message: "Error updating ElectronBalance" });
+      }
+
+      // Check if the update was successful
+      if (result.affectedRows === 0) {
+        return res
+          .status(404)
+          .json({ message: "ElectronBalance not found" });
+      }
+
+      res
+        .status(200)
+        .json(result);
+    }
+  );
+})
 
 router.post("/transfermoney/:userId", (req, res) => {
   const { userId } = req.params;

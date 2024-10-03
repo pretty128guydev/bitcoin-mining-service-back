@@ -86,7 +86,7 @@ const User = {
       // If no duplicate found, hash the password and create the user
       const hashedPassword = bcrypt.hashSync(password, 10);
       const query =
-        "INSERT INTO users (firstname, lastname, password, email, phoneNumber, role, balance, button_clicks, invites, withdraw_amount, all_withdraw, gold_coin, first_investment, total_earning, daily_earning, electron_balance) VALUES (?, ?, ?, ?, ?, ?, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)";
+        "INSERT INTO users (firstname, lastname, password, email, phoneNumber, role, balance, button_clicks, invites, withdraw_amount, all_withdraw, gold_coin, first_investment, total_earning, daily_earning, electron_balance, total_fee, one_fee) VALUES (?, ?, ?, ?, ?, ?, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)";
       db.query(
         query,
         [
@@ -262,6 +262,19 @@ const User = {
     });
   },
 
+  updateOneFee: (userId, newfee, callback) => {
+    // Make sure to sanitize and validate inputs in a real application
+    const query = "UPDATE users SET one_fee = ? WHERE id = ?";
+    db.query(query, [newfee, userId], (err, results) => {
+      if (err) {
+        return callback(err);
+      }
+      callback(null, results);
+    });
+  },
+
+
+
   updateWithdrawAmount: (userId, newamount, callback) => {
     // Make sure to sanitize and validate inputs in a real application
     const query = "UPDATE users SET withdraw_amount = ? WHERE id = ?";
@@ -279,6 +292,20 @@ const User = {
   updateAllWithdraw: (userId, newamount, callback) => {
     // Make sure to sanitize and validate inputs in a real application
     const query = "UPDATE users SET all_withdraw = all_withdraw + ? WHERE id = ?";
+    db.query(query, [newamount, userId], (err, results) => {
+      if (err) {
+        return callback(err);
+      }
+      if (results.length === 0) {
+        return callback(null, null); // Handle the case where no user is found
+      }
+      callback(null, results);
+    });
+  },
+
+  updateTotalFee: (userId, newamount, callback) => {
+    // Make sure to sanitize and validate inputs in a real application
+    const query = "UPDATE users SET total_fee = total_fee + ? WHERE id = ?";
     db.query(query, [newamount, userId], (err, results) => {
       if (err) {
         return callback(err);
@@ -388,7 +415,7 @@ const User = {
         console.error("Error updating payment total_earning->", err);
         return callback(err, null);
       }
-      console.log(result)
+      console.log("no error")
       return callback(null, result);
     });
   },
@@ -402,6 +429,21 @@ const User = {
     db.query(query, [actually_paid, id], (err, result) => {
       if (err) {
         console.error("Error updating electron_balance->", err);
+        return callback(err, null);
+      }
+      return callback(null, result);
+    });
+  },
+
+  updateClicked: (id, newclicked, callback) => {
+    const query = `
+        UPDATE users 
+        SET clicked = ? 
+        WHERE id = ?`;
+
+    db.query(query, [newclicked, id], (err, result) => {
+      if (err) {
+        console.error("Error updating clicked->", err);
         return callback(err, null);
       }
       return callback(null, result);
@@ -435,6 +477,46 @@ const User = {
         return callback(err, null);
       }
       return callback(null, result);
+    });
+  },
+
+  getOneFee: (id, callback) => {
+    const query = `
+      SELECT one_fee 
+      FROM users 
+      WHERE id = ?`;
+
+    db.query(query, [id], (err, result) => {
+      if (err) {
+        return callback(err, null);
+      }
+
+      // Check if the payment existsa
+      if (result.length === 0) {
+        return callback(null, null);
+      }
+      // Return the balance
+      return callback(null, result[0].one_fee);
+    });
+  },
+
+  getClicked: (id, callback) => {
+    const query = `
+      SELECT clicked 
+      FROM users 
+      WHERE id = ?`;
+
+    db.query(query, [id], (err, result) => {
+      if (err) {
+        return callback(err, null);
+      }
+
+      // Check if the payment existsa
+      if (result.length === 0) {
+        return callback(null, null);
+      }
+      // Return the balance
+      return callback(null, result[0].clicked);
     });
   },
 
@@ -813,7 +895,7 @@ const User = {
     });
   },
 
-  
+
   getSecurityPassword: (id, callback) => {
     const query = `
       SELECT security_password 
